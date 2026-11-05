@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stjarnavík</title>
+<meta name="description" content="A ilha de Stjarnavík: o mapa, a pedra dos fundadores e a ficha de cada colono.">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<header class="topo">
+  <a class="marca" href="#ilha" aria-label="Stjarnavík">
+    <canvas class="px" data-px="STJARNAVÍK" data-escala="4" data-cor="#f0c45a"></canvas>
+  </a>
+  <nav>
+    <a href="#ilha">Ilha</a>
+    <a href="#pedra">Pedra</a>
+    <a href="#moradores">Moradores</a>
+    <a href="#entrar">Como entrar</a>
+  </nav>
+</header>
+
+<main>
+  <section id="ilha" class="bloco">
+    <h1 class="titulo"><canvas class="px" data-px="A ILHA" data-escala="3"></canvas><span class="so-leitor">A ilha</span></h1>
+    <p class="linha-fina" id="contagem"></p>
+    <div class="mapa" id="mapa">
+      <img src="img/mundo-foto.png" alt="A ilha de Stjarnavík no meio do mar, com os colonos na neve, a pedra rúnica e o píer." width="1120" height="630">
+    </div>
+    <p class="dica">O mundo é enorme e quase todo coberto pela névoa. Arraste para navegar, use dois dedos (ou a roda do mouse) para aproximar e toque num colono para ver a ficha.</p>
+  </section>
+
+  <section id="pedra" class="bloco duas">
+    <div class="pedra-img">
+      <img src="img/pedra.png" alt="A pedra dos fundadores: uma serpente vermelha vai e volta pela pedra, com os nomes gravados dentro dela." width="216" height="320">
+    </div>
+    <div class="pedra-texto">
+      <h2 class="titulo"><canvas class="px" data-px="A PEDRA DOS FUNDADORES" data-escala="2"></canvas><span class="so-leitor">A pedra dos fundadores</span></h2>
+      <p>Os 20 primeiros colonos têm o nome gravado na pedra, para sempre.</p>
+      <p>Como nas pedras rúnicas de verdade, os nomes ficam gravados dentro do corpo da serpente.</p>
+      <p>A primeira volta já estava raspada quando eles chegaram. Ninguém sabe de quem era o nome.</p>
+      <p>Os 20 nomes já estão gravados. A serpente está completa.</p>
+      <p class="vagas" id="vagas"></p>
+    </div>
+  </section>
+
+  <section id="moradores" class="bloco">
+    <h2 class="titulo"><canvas class="px" data-px="OS MORADORES" data-escala="3"></canvas><span class="so-leitor">Os moradores</span></h2>
+    <label class="busca">
+      <span>Procure seu nome</span>
+      <input type="search" id="busca" placeholder="ex.: Ragnar" autocomplete="off">
+    </label>
+    <div class="cards" id="cards"></div>
+    <p class="vazio" id="nada" hidden>Nenhum colono com esse nome. Ainda dá tempo de embarcar.</p>
+
+    <h3 class="sub">Salão dos que partiram</h3>
+    <p class="linha-fina" id="salao">Ninguém partiu ainda. Quem deixa a ilha pega a febre do inverno, e depois de 7 dias vem para cá.</p>
+  </section>
+
+  <section id="entrar" class="bloco">
+    <h2 class="titulo"><canvas class="px" data-px="COMO ENTRAR" data-escala="3"></canvas><span class="so-leitor">Como entrar</span></h2>
+    <ol class="passos">
+      <li><b>Siga</b> a saga no Instagram: <span class="ouro">stjarnavik</span>.</li>
+      <li><b>Comente seu nome</b> no Reel mais novo. Só o nome já basta; a profissão é opcional.</li>
+      <li>Você desembarca no próximo episódio <b>com o nome do jeito que comentou</b>. No botão <span class="info-txt">i</span> ao lado do nome tem uma ideia de nome nórdico; só troca quem pedir.</li>
+    </ol>
+    <p class="linha-fina">Cada pessoa tem um colono. Você começa como <b>karl</b> e sobe participando: drengr, húskarl, hersir e, um dia, jarl.</p>
+  </section>
+</main>
+
+<footer class="rodape">
+  <p>Aqui só aparece o nome que cada colono comentou. Nenhum perfil, nenhum @, nenhum dado pessoal.</p>
+  <p>Stjarnavík · versão 0</p>
+</footer>
+
+<dialog id="dica" class="dica-nome" aria-labelledby="dica-titulo">
+  <div class="ficha" id="dica-corpo"></div>
+  <form method="dialog"><button class="fechar" aria-label="Fechar">×</button></form>
+</dialog>
+
+<dialog id="ficha" aria-labelledby="ficha-nome">
+  <div class="ficha" id="ficha-corpo"></div>
+  <form method="dialog"><button class="fechar" aria-label="Fechar">×</button></form>
+</dialog>
+
+<script src="dados/fonte.js"></script>
+<script src="dados/moradores.js"></script>
+<script src="js/mundo.js"></script>
+<script src="js/site.js"></script>
+</body>
+</html>
