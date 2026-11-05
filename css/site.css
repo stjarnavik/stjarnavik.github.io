@@ -1,0 +1,188 @@
+/* Stjarnavík v0: as cores vêm da paleta dos Reels (scripts/desenho.py e vinhetas.CEU). */
+:root {
+  --ceu: #0c1228;
+  --ceu-2: #101a34;
+  --ceu-3: #1a2a4a;
+  --borda: #2c3d5e;
+  --neve: #e9eff3;
+  --neve-sombra: #d0dbe5;
+  --texto: #e9eff3;
+  --texto-fraco: #a9b6c8;
+  --ouro: #f0c45a;
+  --runa: #be342c;
+  --pedra: #6e757e;
+  --verde: #6fae7c;
+  --febre: #e0873a;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0;
+  background: var(--ceu);
+  color: var(--texto);
+  font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+img, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
+a { color: var(--ouro); }
+.so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* topo */
+.topo {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--ceu);
+  border-bottom: 2px solid var(--borda);
+}
+.marca { display: block; line-height: 0; }
+.topo nav { display: flex; gap: 4px; flex-wrap: wrap; }
+.topo nav a {
+  color: var(--texto); text-decoration: none; font-size: 15px;
+  padding: 6px 10px; border: 2px solid transparent;
+}
+.topo nav a:hover, .topo nav a:focus-visible { border-color: var(--borda); background: var(--ceu-2); }
+
+/* blocos */
+main { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+.bloco { padding: 40px 0 8px; }
+.titulo { margin: 0 0 14px; line-height: 0; }
+.sub { margin: 36px 0 6px; font-size: 18px; color: var(--ouro); }
+.linha-fina { color: var(--texto-fraco); margin: 0 0 16px; }
+.dica { color: var(--texto-fraco); font-size: 14px; margin: 8px 0 0; }
+
+/* mapa */
+.mapa {
+  position: relative;
+  width: 100%;
+  height: clamp(420px, 74vh, 720px);
+  outline: 2px solid var(--borda);
+  background: #1a3654;
+  overflow: hidden;
+  touch-action: none;
+}
+.mapa > img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
+.mapa canvas.mapa-vivo { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.mapa canvas.mapa-vivo:focus-visible { outline: 2px solid var(--ouro); outline-offset: -2px; }
+.controles { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.controles button {
+  width: 40px; height: 40px; font: 700 20px/1 system-ui, sans-serif; color: var(--texto); cursor: pointer;
+  background: rgba(16, 26, 52, .88); border: 2px solid var(--borda); box-shadow: inset 0 2px 0 #3c5072;
+}
+.controles button:hover, .controles button:focus-visible { border-color: var(--ouro); outline: none; }
+.aviso {
+  position: absolute; left: 50%; bottom: 14px; transform: translate(-50%, 8px); opacity: 0;
+  max-width: calc(100% - 32px); padding: 8px 12px; font-size: 14px; line-height: 1.4;
+  background: rgba(22, 26, 36, .92); border-top: 2px solid #5a687c; color: var(--texto);
+  transition: opacity .25s, transform .25s; pointer-events: none;
+}
+.aviso.ver { opacity: 1; transform: translate(-50%, 0); }
+
+/* pedra */
+.duas { display: grid; grid-template-columns: minmax(0, 432px) 1fr; gap: 28px; align-items: center; }
+.pedra-img { width: 100%; }
+.pedra-img img { width: 100%; height: auto; display: block; outline: 2px solid var(--borda); }
+.pedra-texto p { margin: 0 0 12px; }
+.vagas { color: var(--ouro); font-weight: 600; }
+@media (max-width: 640px) {
+  .duas { grid-template-columns: 1fr; }
+  .pedra-img { max-width: 432px; margin: 0 auto; }
+}
+
+/* busca */
+.busca { display: block; margin: 0 0 18px; }
+.busca span { display: block; font-size: 14px; color: var(--texto-fraco); margin-bottom: 4px; }
+.busca input {
+  width: 100%; max-width: 360px;
+  font: inherit; color: var(--texto);
+  background: var(--ceu-2); border: 2px solid var(--borda); padding: 8px 10px;
+}
+.busca input:focus { outline: none; border-color: var(--ouro); }
+
+/* cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.card {
+  display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: start;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--ceu-2); border: 2px solid var(--borda); padding: 12px;
+}
+.card:hover, .card:focus-visible { border-color: var(--ouro); outline: none; }
+.card.a-confirmar { border-style: dashed; opacity: .82; }
+.chao { background: var(--neve); width: 64px; height: 76px; display: grid; place-items: end center; padding-bottom: 6px; border-bottom: 4px solid var(--neve-sombra); }
+.chao img { width: 39px; height: 57px; image-rendering: pixelated; }
+.card .nome { line-height: 0; margin: 2px 0 8px; }
+.card .meta { font-size: 14px; color: var(--texto-fraco); margin: 0; }
+.card .legenda { font-size: 13px; line-height: 1.35; color: var(--texto-fraco); font-style: italic; margin: 4px 0 6px; }
+.selo {
+  display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 1px 6px; margin-top: 6px; border: 2px solid currentColor;
+}
+.selo.bem { color: var(--verde); }
+.selo.febre { color: var(--febre); }
+.selo.partiu { color: var(--texto-fraco); }
+.selo.a-confirmar { color: var(--ouro); border-style: dashed; }
+.vazio { color: var(--texto-fraco); }
+
+/* como entrar */
+.passos { padding-left: 22px; margin: 0 0 14px; }
+.passos li { margin-bottom: 8px; }
+.ouro { color: var(--ouro); font-weight: 600; }
+
+/* rodape */
+.rodape { max-width: 920px; margin: 48px auto 0; padding: 20px 16px 32px; border-top: 2px solid var(--borda); color: var(--texto-fraco); font-size: 14px; }
+.rodape p { margin: 0 0 4px; }
+
+/* ficha (dialog) */
+dialog {
+  width: min(420px, calc(100% - 32px)); padding: 0;
+  background: var(--ceu-2); color: var(--texto); border: 2px solid var(--ouro);
+}
+dialog::backdrop { background: rgba(6, 8, 18, .72); }
+.ficha { padding: 20px; overflow: hidden; }
+.ficha-topo { padding-right: 24px; display: grid; grid-template-columns: 90px 1fr; gap: 16px; align-items: end; margin-bottom: 14px; }
+.ficha .chao { width: 104px; height: 132px; padding-bottom: 10px; }
+.ficha .chao img { width: 78px; height: 114px; }
+.ficha .nome { line-height: 0; margin-bottom: 6px; }
+.ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 15px; }
+.ficha dt { color: var(--texto-fraco); }
+.ficha dd { margin: 0; }
+.escada { display: flex; gap: 3px; flex-wrap: wrap; }
+.escada span { font-size: 12px; padding: 1px 5px; border: 2px solid var(--borda); color: var(--texto-fraco); }
+.escada span.aqui { border-color: var(--ouro); color: var(--ouro); font-weight: 700; }
+.runas { display: inline-flex; gap: 4px; margin-right: 8px; vertical-align: middle; }
+.runas i, .runas b { width: 10px; height: 10px; border: 2px solid var(--pedra); }
+.runas b { background: var(--ouro); border-color: var(--ouro); }
+.apelido { font-size: 14px; color: var(--texto-fraco); margin-bottom: 2px; }
+.ficha .nota { margin: 14px 0 0; color: var(--texto-fraco); font-style: italic; }
+.fechar {
+  position: absolute; top: 6px; right: 8px;
+  font: 26px/1 system-ui, sans-serif; color: var(--texto); background: none; border: 0; cursor: pointer; padding: 4px 8px;
+}
+.px-palavras { display: flex; flex-wrap: wrap; gap: 6px 10px; line-height: 0; }
+
+/* cantos "cortados" em degrau, como as caixas de texto dos Reels */
+.card, dialog, .busca input {
+  clip-path: polygon(0 4px, 2px 4px, 2px 2px, 4px 2px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 2px, calc(100% - 2px) 2px,
+    calc(100% - 2px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 2px) calc(100% - 4px), calc(100% - 2px) calc(100% - 2px),
+    calc(100% - 4px) calc(100% - 2px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 2px), 2px calc(100% - 2px),
+    2px calc(100% - 4px), 0 calc(100% - 4px));
+}
+.card { box-shadow: inset 0 2px 0 #3c5072; }
+.px-palavras canvas { max-width: 100%; height: auto !important; }
+.card > div { min-width: 0; }
+
+/* 5/11, noite: card com botao "i" (o card inteiro abre a ficha; o i abre a dica do nome) */
+.card { position: relative; }
+.card-abrir { position: absolute; inset: 0; width: 100%; background: none; border: 0; cursor: pointer; z-index: 1; }
+.card:has(.card-abrir:focus-visible) { border-color: var(--ouro); }
+.card-abrir:focus-visible { outline: none; }
+.nome { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.info, .info-txt {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; padding: 0;
+  font: italic 700 14px/1 Georgia, serif; color: #0e1424; background: var(--ouro);
+  border: 0; border-radius: 50%; cursor: pointer; position: relative; z-index: 2;
+}
+.info:hover, .info:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
+.info-txt { width: 18px; height: 18px; font-size: 12px; vertical-align: 1px; cursor: default; }
+.dica-nome h3 { margin: 0 0 10px; padding-right: 28px; color: var(--ouro); font-size: 17px; }
+.dica-nome p { margin: 0 0 10px; line-height: 1.45; }
