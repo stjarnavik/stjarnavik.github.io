@@ -186,3 +186,12 @@ dialog::backdrop { background: rgba(6, 8, 18, .72); }
 .info-txt { width: 18px; height: 18px; font-size: 12px; vertical-align: 1px; cursor: default; }
 .dica-nome h3 { margin: 0 0 10px; padding-right: 28px; color: var(--ouro); font-size: 17px; }
 .dica-nome p { margin: 0 0 10px; line-height: 1.45; }
+
+/* 6/11: fundadores (estrela), colonos e "hoje na ilha" */
+.card.e-fundador { box-shadow: inset 0 2px 0 #8a6a2c; }
+.card .meta.fundador, .ficha .quem.fundador { color: var(--ouro); }
+.card.e-colono .meta { color: var(--texto-fraco); }
+.hoje { background: var(--ceu-2); border: 2px solid var(--borda); border-left: 4px solid var(--ouro); padding: 10px 12px; margin: 0 0 14px; }
+.hoje p { margin: 4px 0 0; font-style: italic; }
+.hoje-rotulo { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ouro); }
+.hoje-nome { font: inherit; font-style: normal; font-weight: 700; color: var(--ouro); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
