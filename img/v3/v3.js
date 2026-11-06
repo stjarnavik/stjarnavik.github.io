@@ -1,0 +1,1 @@
+window.V3 = {"morador": [9, 26], "pinheiro-1": [12, 35], "pinheiro-2": [14, 43], "pinheiro-3": [16, 51], "pinheiro-4": [17, 59], "_morador": {"w": 22, "h": 26, "pe": [11, 25], "quadros": 8, "k": 3}};
