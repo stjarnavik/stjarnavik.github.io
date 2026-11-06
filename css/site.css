@@ -109,7 +109,7 @@ main { max-width: 920px; margin: 0 auto; padding: 0 16px; }
 .card:hover, .card:focus-visible { border-color: var(--ouro); outline: none; }
 .card.a-confirmar { border-style: dashed; opacity: .82; }
 .chao { background: var(--neve); width: 64px; height: 76px; display: grid; place-items: end center; padding-bottom: 6px; border-bottom: 4px solid var(--neve-sombra); }
-.chao img { width: 39px; height: 57px; image-rendering: pixelated; }
+.chao img { width: 44px; height: 52px; image-rendering: pixelated; }
 .card .nome { line-height: 0; margin: 2px 0 8px; }
 .card .meta { font-size: 14px; color: var(--texto-fraco); margin: 0; }
 .card .legenda { font-size: 13px; line-height: 1.35; color: var(--texto-fraco); font-style: italic; margin: 4px 0 6px; }
@@ -141,7 +141,7 @@ dialog::backdrop { background: rgba(6, 8, 18, .72); }
 .ficha { padding: 20px; overflow: hidden; }
 .ficha-topo { padding-right: 24px; display: grid; grid-template-columns: 90px 1fr; gap: 16px; align-items: end; margin-bottom: 14px; }
 .ficha .chao { width: 104px; height: 132px; padding-bottom: 10px; }
-.ficha .chao img { width: 78px; height: 114px; }
+.ficha .chao img { width: 88px; height: 104px; }
 .ficha .nome { line-height: 0; margin-bottom: 6px; }
 .ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 15px; }
 .ficha dt { color: var(--texto-fraco); }
