@@ -129,9 +129,9 @@
   function chao(m) {
     var c = el("div", "chao");
     var img = el("img");
-    img.src = "img/m/" + m.id + ".png";
+    img.src = "img/m3/" + m.id + "-1.png";
     img.alt = "";
-    img.width = 39; img.height = 57;
+    img.width = 44; img.height = 52;
     c.appendChild(img);
     return c;
   }
@@ -200,10 +200,11 @@
 
   function carregar(src) { var i = new Image(); i.src = src; return i; }
   // 5/11, noite: mundo gigante. O chão é desenhado no navegador, em pedaços (js/mundo.js).
-  var mundo = window.criarMundo(M, carregar);
-  var objImgs = mundo.objImgs;
+  // 6/11: relevo novo e arte v3 (pixel lógico mostrado 3x3)
+  var mundo = window.criarMundoNovo(M, carregar);
+  var objImgs = mundo.objImgs, OBJETOS = mundo.objetos;
   var bichoImgs = {};
-  Object.keys(M.bichos_img).forEach(function (k) { bichoImgs[k] = carregar("img/b/" + k + ".png"); });
+  Object.keys(M.bichos_img).forEach(function (k) { bichoImgs[k] = carregar("img/b3/" + k + ".png"); });
 
   function iso(u, v, z) { return [M.ox + (u - v) * M.tw, M.oy + (u + v) * M.th - (z || 0)]; }
   function sortear(a, b) { return a + Math.random() * (b - a); }
@@ -212,16 +213,16 @@
     if (a < 0 || b < 0 || a >= M.G || b >= M.G) return "0";
     return M.zonas[a][b];
   }
-  function nivelZ(u, v) { return M.z[mundo.nivel(Math.floor(u), Math.floor(v))]; }
+  function nivelZ(u, v) { return mundo.altura(u, v); }
 
   // ---- quem anda: colonos e bichos de terra, com a mesma regra de passo suave ----
-  var C = M.colono;
+  var C = window.V3._morador, KM = C.k;   // morador v3: 20x26, 8 quadros, mostrado 3x
   var andantes = [];
   var vivos = todos.map(function (m) {
     var c = m.mapa.casa;
-    var v = { m: m, u: c.x, v: c.y, z: c.z, casa: c, pier: !!c.pier, raio: 2.4, vel: 0.55, pode: "1",
+    var v = { m: m, u: c.x, v: c.y, z: c.pier ? c.z : mundo.altura(c.x, c.y), casa: c, pier: !!c.pier, raio: 2.4, vel: 0.55, pode: "1",
               alvo: null, rapidez: 0, espera: sortear(0, 4), fase: 0, esq: Math.random() < 0.5, resp: Math.random() * 3,
-              img: carregar("img/m/" + m.id + "-anda.png"),
+              img: carregar("img/m3/" + m.id + ".png"),
               nome: novoPx(m.nome, 1, m.estado === "a-confirmar" ? "#f0c45a" : "#f4efe4") };
     andantes.push(v);
     return v;
@@ -298,10 +299,28 @@
     if (o.tipo === "corvo" || o.tipo === "gaivota") return [0, 1, 2, 1][Math.floor(t / 110 + o.fase) % 4];
     return 0;
   }
-  function desenharTira(img, q, w, h, x0, y0, virar) {
+  function desenharTira(img, q, w, h, x0, y0, virar, k) {
     if (!img.complete || !img.naturalWidth) return;
-    if (virar) { ctx.save(); ctx.translate(x0 + w, y0); ctx.scale(-1, 1); ctx.drawImage(img, q * w, 0, w, h, 0, 0, w, h); ctx.restore(); }
-    else ctx.drawImage(img, q * w, 0, w, h, x0, y0, w, h);
+    k = k || 1;
+    var W = w * k, H = h * k, liso = ctx.imageSmoothingEnabled;
+    if (k > 1) ctx.imageSmoothingEnabled = false;   // morador v3: sempre nítido, sem vazar o quadro vizinho
+    if (virar) { ctx.save(); ctx.translate(x0 + W, y0); ctx.scale(-1, 1); ctx.drawImage(img, q * w, 0, w, h, 0, 0, W, H); ctx.restore(); }
+    else ctx.drawImage(img, q * w, 0, w, h, x0, y0, W, H);
+    ctx.imageSmoothingEnabled = liso;
+  }
+  // vento: cada fileira de pixel da copa balança um pouco, mais no alto, com rajadas que atravessam a ilha
+  function arvore(im, o, t) {
+    var pe = window.V3[o.img], w = im.naturalWidth, h = im.naturalHeight;
+    var x0 = Math.round(o.x - pe[0] * 3), y0 = Math.round(o.y - pe[1] * 3);
+    if (parado || cam.s < 0.9) { ctx.drawImage(im, x0, y0, w * 3, h * 3); return; }
+    var T = t / 1000, raj = 0.6 + 0.4 * Math.sin(T * 0.9 - o.x * 0.004);
+    var B = 5;   // faixas de 5 pixels: leve no celular (cerca de 12 desenhos por árvore)
+    for (var r = 0; r < h; r += B) {
+      var k = Math.max(0, 1 - (r + B) / (h * 0.8));
+      var d = Math.round(Math.sin(T * 2.2 + o.x * 0.013 + o.y * 0.009) * 1.6 * raj * k * k) * 3;
+      var n = Math.min(B, h - r);
+      ctx.drawImage(im, 0, r, w, n, x0 + d, y0 + r * 3, w * 3, n * 3);
+    }
   }
 
   // ---- névoa (5/11, noite): pintada no tamanho da tela, 8x menor, para valer num mundo gigante ----
@@ -428,21 +447,22 @@
     });
     // tudo o que fica em pé, em ordem de profundidade (só o que aparece na tela)
     var fila = [];
-    if (!longe) M.objetos.forEach(function (o) { if (ve(o.x, o.y)) fila.push({ p: o.prof, o: o }); });
+    if (!longe) OBJETOS.forEach(function (o) { if (ve(o.x, o.y)) fila.push({ p: o.prof, o: o }); });
     vivos.forEach(function (v) { fila.push({ p: v.u + v.v, v: v }); });
     bichos.forEach(function (o) { if (o.u != null) fila.push({ p: o.u + o.v, b: o }); });
     fila.sort(function (a, b) { return a.p - b.p; });
     fila.forEach(function (item) {
       if (item.o) {
         var o = item.o, im = objImgs[o.img];
-        if (im.complete && im.naturalWidth) ctx.drawImage(im, o.x - o.ax, o.y - o.ay);
+        if (!im.complete || !im.naturalWidth) return;
+        if (window.V3[o.img]) arvore(im, o, t); else ctx.drawImage(im, o.x - o.ax, o.y - o.ay);
         return;
       }
       if (item.v) {
         var v = item.v, p = iso(v.u, v.v, v.z);
         ctx.fillStyle = "rgba(40,60,96,0.22)";
-        ctx.beginPath(); ctx.ellipse(p[0] + 1, p[1], 11, 3.2, 0, 0, Math.PI * 2); ctx.fill();
-        desenharTira(v.img, quadroColono(v, t), C.w, C.h, Math.round(p[0] - C.pe[0]), Math.round(p[1] - C.pe[1]), v.esq);
+        ctx.beginPath(); ctx.ellipse(p[0] + 1, p[1], 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+        desenharTira(v.img, quadroColono(v, t), C.w, C.h, Math.round(p[0] - C.pe[0] * KM), Math.round(p[1] - C.pe[1] * KM), v.esq, KM);
         return;
       }
       var b = item.b, inf = b.info, q = quadroBicho(b, t), pb = iso(b.u, b.v, b.z);
@@ -472,7 +492,7 @@
     vivos.forEach(function (v) {
       if (v !== hover && cam.s < 1.1) return;
       var p = iso(v.u, v.v, v.z), n = v.nome;
-      var sx = vw / 2 + (p[0] - cam.x) * cam.s, sy = vh / 2 + (p[1] - C.pe[1] - cam.y) * cam.s;
+      var sx = vw / 2 + (p[0] - cam.x) * cam.s, sy = vh / 2 + (p[1] - C.pe[1] * KM - cam.y) * cam.s;
       var w = n.width * E, h = n.height * E;
       var lx = Math.round(sx - w / 2), ly = Math.round(sy - h - 8);
       ctx.fillStyle = "rgba(22,26,36,0.86)";
@@ -516,7 +536,7 @@
     var folga = Math.max(0, 8 / cam.s - 8);   // mais fácil de tocar quando o mapa está longe
     vivos.forEach(function (v) {
       var p = iso(v.u, v.v, v.z);
-      if (w[0] > p[0] - 12 - folga && w[0] < p[0] + 12 + folga && w[1] > p[1] - C.pe[1] + 4 - folga && w[1] < p[1] + 2 + folga
+      if (w[0] > p[0] - 30 - folga && w[0] < p[0] + 30 + folga && w[1] > p[1] - C.pe[1] * KM + 4 - folga && w[1] < p[1] + 2 + folga
           && v.u + v.v > prof) { achado = v; prof = v.u + v.v; }
     });
     return achado;
