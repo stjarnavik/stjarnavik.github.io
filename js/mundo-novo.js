@@ -116,35 +116,70 @@
     // ---------- relevo orgânico (teste de 5/11): encostas no lugar de degraus, costa curva ----------
     var SUB = 2, GU = NU * SUB, GV = NV * SUB;
     var alt = new Float32Array(GU * GV), mar = new Float32Array(GU * GV), lag = new Float32Array(GU * GV), are = new Float32Array(GU * GV);
-    for (var ga = 0; ga < GU; ga++) for (var gb = 0; gb < GV; gb++) {
-      var nn = nvG[Math.floor(ga / SUB) * NV + Math.floor(gb / SUB)], gk = ga * GV + gb;
-      alt[gk] = nn ? (nn === 5 ? Z[2] - 3 : (nn === 1 ? -4 : Z[nn])) : -10;
-      mar[gk] = nn ? 1 : 0; lag[gk] = nn === 5 ? 1 : 0; are[gk] = nn === 1 ? 1 : 0;
+    alt.fill(-10);   // mar; só a terra é escrita
+    for (var ta0 = 0; ta0 < NU; ta0++) for (var tb0 = 0; tb0 < NV; tb0++) {
+      var nn = nvG[ta0 * NV + tb0];
+      if (!nn) continue;
+      for (var sa = 0; sa < SUB; sa++) for (var sb = 0; sb < SUB; sb++) {
+        var gk = (ta0 * SUB + sa) * GV + tb0 * SUB + sb;
+        alt[gk] = nn === 5 ? Z[2] - 3 : (nn === 1 ? -4 : Z[nn]);
+        mar[gk] = 1; lag[gk] = nn === 5 ? 1 : 0; are[gk] = nn === 1 ? 1 : 0;
+      }
     }
+    // 6/11: a grade é quase toda mar. Só borra os blocos perto de terra (o mar longe é constante e não muda),
+    // e com soma separável (linha e coluna). Antes levava ~1 s no computador e vários segundos no celular.
+    var BL = 32, NBA = Math.ceil(GU / BL), NBB = Math.ceil(GV / BL), ativo = new Uint8Array(NBA * NBB);
+    for (var ia = 0; ia < NU; ia++) for (var ib = 0; ib < NV; ib++) {
+      if (!nvG[ia * NV + ib]) continue;
+      var ba = Math.floor(ia * SUB / BL), bb0 = Math.floor(ib * SUB / BL);
+      for (var xa = Math.max(0, ba - 1); xa <= Math.min(NBA - 1, ba + 1); xa++)
+        for (var xb = Math.max(0, bb0 - 1); xb <= Math.min(NBB - 1, bb0 + 1); xb++) ativo[xa * NBB + xb] = 1;
+    }
+    var faixasAtivas = [];   // [a0, a1, b0, b1] de cada bloco ativo
+    for (ia = 0; ia < NBA; ia++) for (ib = 0; ib < NBB; ib++) if (ativo[ia * NBB + ib])
+      faixasAtivas.push([ia * BL, Math.min(GU, ia * BL + BL), ib * BL, Math.min(GV, ib * BL + BL)]);
     function borrar(arr, vezes) {
-      var tmp = new Float32Array(arr.length);
+      var tmp = new Float32Array(arr), tmp2 = new Float32Array(arr);
       for (var it = 0; it < vezes; it++) {
-        for (var a = 0; a < GU; a++) for (var b = 0; b < GV; b++) {
-          var s = 0, c = 0;
-          for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
-            var aa = a + da, bb = b + db;
-            if (aa < 0 || bb < 0 || aa >= GU || bb >= GV) continue;
-            s += arr[aa * GV + bb]; c++;
+        // linhas (eixo b) de arr -> tmp ; colunas (eixo a) de tmp -> tmp2 ; tmp2 -> arr
+        faixasAtivas.forEach(function (q) {
+          for (var a = Math.max(0, q[0] - 1); a < Math.min(GU, q[1] + 1); a++) {
+            var o = a * GV;
+            for (var b = q[2]; b < q[3]; b++) {
+              var s = arr[o + b], c = 1;
+              if (b > 0) { s += arr[o + b - 1]; c++; }
+              if (b < GV - 1) { s += arr[o + b + 1]; c++; }
+              tmp[o + b] = s / c;
+            }
           }
-          tmp[a * GV + b] = s / c;
-        }
-        arr.set(tmp);
+        });
+        faixasAtivas.forEach(function (q) {
+          for (var a = q[0]; a < q[1]; a++) {
+            var o = a * GV;
+            for (var b = q[2]; b < q[3]; b++) {
+              var s = tmp[o + b], c = 1;
+              if (a > 0) { s += tmp[o - GV + b]; c++; }
+              if (a < GU - 1) { s += tmp[o + GV + b]; c++; }
+              tmp2[o + b] = s / c;
+            }
+          }
+        });
+        faixasAtivas.forEach(function (q) {
+          for (var a = q[0]; a < q[1]; a++) { var o = a * GV; for (var b = q[2]; b < q[3]; b++) arr[o + b] = tmp2[o + b]; }
+        });
       }
     }
     var mar2 = new Float32Array(mar);
     borrar(alt, 3); borrar(mar, 2); borrar(lag, 2); borrar(are, 2); borrar(mar2, 7);
     // inclinação pronta em cada ponto da grade (px de altura por ladrilho)
     var incU = new Float32Array(GU * GV), incV = new Float32Array(GU * GV);
-    for (ga = 1; ga < GU - 1; ga++) for (gb = 1; gb < GV - 1; gb++) {
-      gk = ga * GV + gb;
-      incU[gk] = (alt[gk + GV] - alt[gk - GV]) * SUB / 2;
-      incV[gk] = (alt[gk + 1] - alt[gk - 1]) * SUB / 2;
-    }
+    faixasAtivas.forEach(function (q) {   // fora dos blocos ativos o chão é plano (mar)
+      for (var ga = Math.max(1, q[0]); ga < Math.min(GU - 1, q[1]); ga++) for (var gb = Math.max(1, q[2]); gb < Math.min(GV - 1, q[3]); gb++) {
+        var gk = ga * GV + gb;
+        incU[gk] = (alt[gk + GV] - alt[gk - GV]) * SUB / 2;
+        incV[gk] = (alt[gk + 1] - alt[gk - 1]) * SUB / 2;
+      }
+    });
     function amostra(arr, u, v) {
       var a = (u - umin) * SUB - 0.5, b = (v - vmin) * SUB - 0.5;
       if (a < 0) a = 0; if (b < 0) b = 0; if (a > GU - 1.001) a = GU - 1.001; if (b > GV - 1.001) b = GV - 1.001;
@@ -602,6 +637,55 @@
       }
     }
 
+    // ---------- 6/11: pedaços prontos ficam guardados no aparelho (IndexedDB): no reload o chão aparece na hora ----------
+    var guardado = { db: null, chaves: {}, pedindo: {}, esperarAte: performance.now() + 500 };
+    (function () {
+      var txt = JSON.stringify([M.faixas, M.objetos, M.troncos, M.trilha, M.lugares, "chao-1"]), h = 0;
+      for (var q = 0; q < txt.length; q++) h = (h * 31 + txt.charCodeAt(q)) | 0;
+      guardado.ver = "c" + (h >>> 0).toString(36) + "-";   // se o mapa mudar, a versão muda e o velho é apagado
+      if (!window.indexedDB || !window.createImageBitmap) { guardado.esperarAte = 0; return; }
+      try {
+        var req = indexedDB.open("stjarnavik-chao", 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore("p"); };
+        req.onerror = function () { guardado.esperarAte = 0; };
+        req.onsuccess = function () {
+          var db = req.result, st = db.transaction("p", "readwrite").objectStore("p"), r2 = st.getAllKeys();
+          r2.onsuccess = function () {
+            r2.result.forEach(function (k) {
+              k = String(k);
+              if (k.indexOf(guardado.ver) === 0) guardado.chaves[k.slice(guardado.ver.length)] = 1; else st.delete(k);
+            });
+            guardado.db = db;
+          };
+          r2.onerror = function () { guardado.esperarAte = 0; };
+        };
+      } catch (e) { guardado.esperarAte = 0; }
+    })();
+    function lerGuardado(i, j) {
+      var k = i + "," + j;
+      if (guardado.pedindo[k]) return;
+      guardado.pedindo[k] = 1;
+      function falhou() { delete guardado.chaves[k]; delete guardado.pedindo[k]; if (!mediaFeitos[k]) mediaFila.push([i, j]); }
+      try {
+        var r = guardado.db.transaction("p").objectStore("p").get(guardado.ver + k);
+        r.onsuccess = function () {
+          if (!r.result) return falhou();
+          createImageBitmap(r.result).then(function (bm) { guardar(i, j, bm); delete guardado.pedindo[k]; }, falhou);
+        };
+        r.onerror = falhou;
+      } catch (e) { falhou(); }
+    }
+    function salvarGuardado(i, j, cv) {
+      var k = i + "," + j;
+      if (!guardado.db || !cv.toBlob || guardado.chaves[k]) return;
+      guardado.chaves[k] = 1;
+      cv.toBlob(function (b) {
+        if (b) try { guardado.db.transaction("p", "readwrite").objectStore("p").put(b, guardado.ver + k); } catch (e) {}
+      }, "image/png");
+    }
+    function temGuardado(i, j) { return guardado.db && guardado.chaves[i + "," + j]; }
+    function esperandoGuardado() { return !guardado.db && performance.now() < guardado.esperarAte; }
+
     var MEDIO = 0.18, PERTO = 0.6;
     // desenha o chão na área visível (ctx já está em coordenadas do mundo)
     function chao(ctx, x0, y0, x1, y1, s, prazo) {
@@ -619,21 +703,28 @@
         for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
           var c = pegar(i, j);
           if (c) ctx.drawImage(c, i * CH, j * CH);
-          else falta.push([i, j]);
+          else if (temGuardado(i, j)) lerGuardado(i, j);
+          else if (!esperandoGuardado()) falta.push([i, j]);
         }
         var mx = (x0 + x1) / 2 / CH, my = (y0 + y1) / 2 / CH;
         falta.sort(function (a, b) { return Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my); });
         for (var f = 0; f < falta.length && (f === 0 || performance.now() < fim); f++) {
           var cv = renderizar(falta[f][0], falta[f][1]);
           guardar(falta[f][0], falta[f][1], cv);
+          salvarGuardado(falta[f][0], falta[f][1], cv);
           ctx.drawImage(cv, falta[f][0] * CH, falta[f][1] * CH);
         }
         return;
       }
       // sem pedaço para fazer na tela: adianta a visão média
+      if (esperandoGuardado()) return;
       while (mediaFila.length && performance.now() < fim) {
         var p = mediaFila.shift();
-        if (!mediaFeitos[p[0] + "," + p[1]]) guardar(p[0], p[1], renderizar(p[0], p[1]));
+        if (mediaFeitos[p[0] + "," + p[1]]) continue;
+        if (temGuardado(p[0], p[1])) { lerGuardado(p[0], p[1]); continue; }
+        var cv2 = renderizar(p[0], p[1]);
+        guardar(p[0], p[1], cv2);
+        salvarGuardado(p[0], p[1], cv2);
       }
     }
 

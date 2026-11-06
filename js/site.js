@@ -64,9 +64,16 @@
   var todos = D.moradores;
   var fundadores = todos.filter(function (m) { return m.fundador; });
   var esperando = todos.filter(function (m) { return m.estado === "a-confirmar"; });
+  var colonos = todos.filter(function (m) { return m.colono; });
   var faltam = D.vagas_fundadores - fundadores.length;
+  // 6/11: fundador tem estrela (Stjarnavík = baía da estrela), número de chegada e casa perto da pedra
+  function quem(m) {
+    if (m.fundador) return "★ Fundador nº " + m.fundador + (m.dia ? " · chegou em " + m.dia : "");
+    if (m.colono) return "Colono nº " + m.colono + (m.dia ? " · chegou em " + m.dia : "");
+    return "Pediu para embarcar";
+  }
   document.getElementById("contagem").textContent =
-    fundadores.length + " fundadores na ilha" +
+    fundadores.length + " fundadores" + (colonos.length ? " e " + colonos.length + " colonos" : "") + " na ilha" +
     (esperando.length ? " · " + esperando.length + " esperando no píer" : "") +
     (faltam > 0 ? " · faltam " + faltam + " vagas na pedra" : " · a pedra está completa");
   document.getElementById("vagas").textContent =
@@ -157,7 +164,7 @@
     nome.appendChild(pxPalavras(m.nome, 3, "#f0c45a"));
     if (m.sugestao || m.sugestao_porque === "deus") nome.appendChild(botaoInfo(m));   // nome já nórdico não precisa do i
     lado.appendChild(nome);
-    lado.appendChild(el("div", null, m.fundador ? "Fundador nº " + m.fundador : "Pediu para embarcar"));
+    lado.appendChild(el("div", m.fundador ? "quem fundador" : "quem", quem(m)));
     lado.appendChild(selo(m));
     topo.appendChild(lado);
     corpo.appendChild(topo);
@@ -227,6 +234,33 @@
     andantes.push(v);
     return v;
   });
+  // ---- pegadas (6/11): quem chegou por último deixa uma trilha do píer até a casa, por uns dias ----
+  var pegadas = [];
+  (function () {
+    var T = M.trilha, hoje = new Date();
+    if (!T || !T.length) return;
+    todos.forEach(function (m, i) {
+      if (!m.pegadas || hoje >= new Date(m.pegadas + "T23:59:00")) return;
+      var c = m.mapa.casa, melhor = 0, dm = 1e9;
+      T.forEach(function (p, k) { var d = Math.hypot(p[0] - c.x, p[1] - c.y); if (d < dm) { dm = d; melhor = k; } });
+      var pts = [];
+      for (var k = T.length - 1; k >= melhor; k--) pts.push(T[k]);
+      pts.push([c.x, c.y]);
+      var lado = 1, desvio = (i % 4 - 1.5) * 0.18;   // cada um anda um pouco ao lado do outro
+      for (var s = 0; s < pts.length - 1; s++) {
+        var a = pts[s], b = pts[s + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.floor(L / 0.32));
+        var nx = -(b[1] - a[1]) / (L || 1), ny = (b[0] - a[0]) / (L || 1);
+        for (var j = 0; j < n; j++) {
+          var f = j / n, u = a[0] + (b[0] - a[0]) * f + nx * (desvio + lado * 0.07), v = a[1] + (b[1] - a[1]) * f + ny * (desvio + lado * 0.07);
+          if (Math.hypot(u - c.x, v - c.y) < 0.6) continue;
+          var p = iso(u, v, mundo.altura(u, v));
+          pegadas.push([Math.round(p[0]), Math.round(p[1])]);
+          lado = -lado;
+        }
+      }
+    });
+  })();
+
   var bichos = M.bichos.map(function (b) {
     var o = { b: b, tipo: b.tipo, info: M.bichos_img[b.tipo], img: bichoImgs[b.tipo], fase: Math.random() * 10,
               esq: Math.random() < 0.5, espera: sortear(0, 5), alvo: null, rapidez: 0, quadroFixo: 0 };
@@ -422,6 +456,18 @@
     }
   }
 
+  // estrela de 5x5 pixels ao lado do nome de cada fundador
+  var ESTRELA = ["..#..", ".###.", "#####", ".###.", ".#.#."];
+  function estrela(x, y, E, m, t) {
+    var a = 1;
+    // a estrela do velho que diz ser Odin falha de vez em quando. Ninguém sabe por quê.
+    if (m.sugestao_porque === "deus" && !parado) a = Math.sin(t / 610) * Math.sin(t / 1370) > 0.55 ? 0.18 : 1;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#f0c45a";
+    ESTRELA.forEach(function (l, r) { for (var k = 0; k < 5; k++) if (l[k] === "#") ctx.fillRect(x + k * E, y + r * E, E, E); });
+    ctx.globalAlpha = 1;
+  }
+
   var hover = null;
   function desenhar(t) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -437,6 +483,10 @@
     var sw = Math.min(M.largura, Math.ceil(x1)) - sx, sh = Math.min(M.altura, Math.ceil(y1)) - sy;
     mundo.chao(ctx, x0, y0, x1, y1, cam.s, arrastando || alvoCam ? 6 : 12);
     ctx.imageSmoothingEnabled = liso;
+    if (pegadas.length && cam.s >= 0.6) {
+      ctx.fillStyle = "rgba(70,92,128,0.45)";
+      pegadas.forEach(function (p) { if (p[0] > x0 && p[0] < x1 && p[1] > y0 && p[1] < y1) ctx.fillRect(p[0] - 3, p[1] - 1, 6, 3); });
+    }
     var M0 = 300;
     function ve(x, y) { return x > x0 - M0 && x < x1 + M0 && y > y0 - M0 && y < y1 + M0; }
     bichos.forEach(function (o) { if (o.tipo === "baleia" && ve(o.b.x, o.b.y)) baleia(o, t); });
@@ -491,14 +541,15 @@
     var E = 2;
     vivos.forEach(function (v) {
       if (v !== hover && cam.s < 1.1) return;
-      var p = iso(v.u, v.v, v.z), n = v.nome;
+      var p = iso(v.u, v.v, v.z), n = v.nome, est = v.m.fundador ? 7 * E : 0;
       var sx = vw / 2 + (p[0] - cam.x) * cam.s, sy = vh / 2 + (p[1] - C.pe[1] * KM - cam.y) * cam.s;
       var w = n.width * E, h = n.height * E;
-      var lx = Math.round(sx - w / 2), ly = Math.round(sy - h - 8);
+      var lx = Math.round(sx - (w + est) / 2) + est, ly = Math.round(sy - h - 8);
       ctx.fillStyle = "rgba(22,26,36,0.86)";
-      ctx.fillRect(lx - 4, ly - 4, w + 8, h + 8);
-      ctx.fillStyle = "#5a687c"; ctx.fillRect(lx - 4, ly - 4, w + 8, 2);
+      ctx.fillRect(lx - 4 - est, ly - 4, w + 8 + est, h + 8);
+      ctx.fillStyle = v.m.fundador ? "#8a6a2c" : "#5a687c"; ctx.fillRect(lx - 4 - est, ly - 4, w + 8 + est, 2);
       ctx.drawImage(n, lx, ly, w, h);
+      if (est) estrela(lx - est, ly + h - 5 * E, E, v.m, t);
     });
   }
 
@@ -649,9 +700,9 @@
 
   // ---------- cards ----------
   var cards = document.getElementById("cards");
-  var ordem = fundadores.concat(esperando);
+  var ordem = fundadores.concat(colonos, esperando);
   ordem.forEach(function (m) {
-    var c = el("div", "card " + (m.estado === "a-confirmar" ? "a-confirmar" : ""));
+    var c = el("div", "card " + (m.estado === "a-confirmar" ? "a-confirmar" : (m.fundador ? "e-fundador" : "e-colono")));
     c.dataset.busca = semAcento(m.nome + " " + (m.sugestao || "")).toLowerCase();
     var abre = el("button", "card-abrir");
     abre.type = "button";
@@ -662,7 +713,7 @@
     nome.appendChild(pxPalavras(m.nome, 2, "#f0c45a"));
     if (m.sugestao || m.sugestao_porque === "deus") nome.appendChild(botaoInfo(m));   // nome já nórdico não precisa do i
     info.appendChild(nome);
-    info.appendChild(el("p", "meta", (m.fundador ? "Fundador nº " + m.fundador : "Pediu para embarcar") + " · " + m.patente));
+    info.appendChild(el("p", "meta" + (m.fundador ? " fundador" : ""), quem(m)));
     if (m.nota && m.estado !== "a-confirmar") info.appendChild(el("p", "legenda", m.nota));
     info.appendChild(selo(m));
     c.appendChild(info);
@@ -670,6 +721,36 @@
     abre.addEventListener("click", function () { abrir(m); });
     cards.appendChild(c);
   });
+
+  // ---------- hoje na ilha (6/11): um morador por dia e uma coisa estranha que aconteceu com ele ----------
+  // As frases plantam mistérios para as próximas sagas. Nada aqui revela o segredo.
+  var HOJE = [
+    "acordou com gosto de sal na boca, como se tivesse nadado a noite inteira.",
+    "achou uma ferramenta enterrada na neve. Não sabe para que serve.",
+    "jura que ouviu um remo na névoa, muito depois de o barco ter ido embora.",
+    "desenhou um símbolo na neve sem perceber. Ninguém da ilha reconhece.",
+    "sonhou com uma casa que nunca viu. Acordou chorando.",
+    "contou quem estava na fogueira. Deu uma pessoa a mais.",
+    "sentiu o amuleto de osso esquentar no peito, de noite, sozinho.",
+    "lembrou de uma palavra. Só uma. Ainda não contou a ninguém qual.",
+    "viu a pedra rúnica brilhar por um instante. Quando olhou de novo, nada."
+  ];
+  (function () {
+    var caixa = document.getElementById("hoje");
+    var na = todos.filter(function (m) { return m.estado !== "a-confirmar" && m.estado !== "partiu"; });
+    if (!caixa || !na.length) return;
+    var agora = new Date(), dia = Math.floor((agora.getTime() - agora.getTimezoneOffset() * 60000) / 864e5);
+    var m = na[(dia * 7) % na.length];
+    caixa.appendChild(el("span", "hoje-rotulo", "Hoje na ilha"));
+    var p = el("p");
+    var b = el("button", "hoje-nome", m.nome);
+    b.type = "button";
+    b.addEventListener("click", function () { abrir(m); });
+    p.appendChild(b);
+    p.appendChild(document.createTextNode(" " + HOJE[dia % HOJE.length]));
+    caixa.appendChild(p);
+    caixa.hidden = false;
+  })();
 
   // ---------- busca pelo nome viking ----------
   // (Depois do n8n: o @ digitado vira hash SHA-256 no navegador e é comparado com m.hash_arroba. O @ nunca é guardado.)
