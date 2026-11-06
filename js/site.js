@@ -210,6 +210,7 @@
   // 6/11: relevo novo e arte v3 (pixel lógico mostrado 3x3)
   var mundo = window.criarMundoNovo(M, carregar);
   var objImgs = mundo.objImgs, OBJETOS = mundo.objetos;
+  var ESCALA = window.ESCALA || {}, ESC_BICHO = window.ESCALA_BICHO || {};   // 6/11: proporções (mundo-novo.js)
   var bichoImgs = {};
   Object.keys(M.bichos_img).forEach(function (k) { bichoImgs[k] = carregar("img/b3/" + k + ".png"); });
 
@@ -343,17 +344,30 @@
     ctx.imageSmoothingEnabled = liso;
   }
   // vento: cada fileira de pixel da copa balança um pouco, mais no alto, com rajadas que atravessam a ilha
+  // 6/11: o vento vale em todos os zooms. Perto: fileiras de pixel (nítido). Longe: a árvore inteira
+  // inclina de leve a partir do pé, num desenho só (leve no celular e sem emendas entre as fileiras).
   function arvore(im, o, t) {
+    var F = o.F || 3;   // tamanho do pixel lógico no mundo (6/11: cada árvore tem o seu, ver mundo-novo.js)
     var pe = window.V3[o.img], w = im.naturalWidth, h = im.naturalHeight;
-    var x0 = Math.round(o.x - pe[0] * 3), y0 = Math.round(o.y - pe[1] * 3);
-    if (parado || cam.s < 0.9) { ctx.drawImage(im, x0, y0, w * 3, h * 3); return; }
+    var x0 = Math.round(o.x - pe[0] * F), y0 = Math.round(o.y - pe[1] * F);
+    if (parado) { ctx.drawImage(im, x0, y0, w * F, h * F); return; }
     var T = t / 1000, raj = 0.6 + 0.4 * Math.sin(T * 0.9 - o.x * 0.004);
+    var onda = Math.sin(T * 2.2 + o.x * 0.013 + o.y * 0.009) * raj;
+    if (cam.s < 0.9) {
+      // no topo a copa anda ~1,5 pixel lógico; de bem longe, pelo menos ~1 pixel de tela, para o vento não sumir
+      var amp = Math.min(12, Math.max(1.5 * F, 1.2 / cam.s));
+      var sh = onda * amp / (h * F);
+      ctx.save(); ctx.transform(1, 0, -sh, 1, sh * o.y, 0);
+      ctx.drawImage(im, x0, y0, w * F, h * F);
+      ctx.restore();
+      return;
+    }
     var B = 5;   // faixas de 5 pixels: leve no celular (cerca de 12 desenhos por árvore)
     for (var r = 0; r < h; r += B) {
       var k = Math.max(0, 1 - (r + B) / (h * 0.8));
-      var d = Math.round(Math.sin(T * 2.2 + o.x * 0.013 + o.y * 0.009) * 1.6 * raj * k * k) * 3;
+      var d = Math.round(onda * 1.6 * k * k) * F;
       var n = Math.min(B, h - r);
-      ctx.drawImage(im, 0, r, w, n, x0 + d, y0 + r * 3, w * 3, n * 3);
+      ctx.drawImage(im, 0, r, w, n, x0 + d, y0 + r * F, w * F, n * F);
     }
   }
 
@@ -407,9 +421,11 @@
   for (var f = 0; f < 90; f++) flocos.push({ x: Math.random(), y: Math.random(), v: sortear(18, 40), f: Math.random() * 6, r: sortear(1, 2.2) });
 
   // ---- câmera ----
-  var SMAX = 3;
+  // 6/11: no máximo 2x (um pixel lógico = 6 px de tela); no mínimo, a ilha inteira com o anel de névoa em volta.
+  // Arrastando, ainda dá para ir até os vultos debaixo da névoa.
+  var SMAX = 2;
   function limites() {
-    var sMin = Math.max(vw / M.largura, vh / M.altura, 0.05);
+    var sMin = Math.max(vw / M.largura, vh / M.altura, Math.min(vw / (4.4 * R.rx), vh / (4.4 * R.ry)), 0.03);
     cam.s = Math.max(sMin, Math.min(SMAX, cam.s));
     var mx = vw / 2 / cam.s, my = vh / 2 / cam.s;
     cam.x = Math.max(mx, Math.min(M.largura - mx, cam.x));
@@ -426,7 +442,8 @@
   // começa olhando a vila (perto); o botão ⌂ volta para cá
   function inicio() {
     var p = iso(M.pedra[0] + 2, M.pedra[1] + 2, M.z[2]);
-    return { x: p[0], y: p[1], s: Math.max(0.7, Math.min(vw / 1300, vh / 800, 1.2)) };
+    // 6/11: começa em zoom "redondo" (pixel nítido) e já com os nomes à vista
+    return { x: p[0], y: p[1], s: vw < 700 ? 0.9 : 1 };
   }
 
   function medir() {
@@ -441,17 +458,18 @@
     var b = o.b, inf = o.info, ciclo = ((t / 1000 + o.fase * 3) % 16) / 16;
     if (ciclo > 0.45) return;
     var sobe = Math.sin(ciclo / 0.45 * Math.PI);
-    var h = Math.round(inf.h * sobe), x0 = b.x - inf.pe[0], y0 = b.y - h;
-    if (h > 0 && o.img.complete) ctx.drawImage(o.img, 0, 0, inf.w, h, x0, y0, inf.w, h);
+    var kb = ESC_BICHO.baleia || 1;   // 6/11: a baleia era mais curta que um homem
+    var h = Math.round(inf.h * sobe), x0 = b.x - inf.pe[0] * kb, y0 = b.y - h * kb;
+    if (h > 0 && o.img.complete) ctx.drawImage(o.img, 0, 0, inf.w, h, x0, y0, inf.w * kb, h * kb);
     ctx.fillStyle = "rgba(196,222,236,0.9)";
-    ctx.fillRect(b.x - inf.w / 2 - 4, b.y - 1, inf.w + 8, 2);
+    ctx.fillRect(b.x - inf.w * kb / 2 - 4, b.y - 1, inf.w * kb + 8, 2);
     if (ciclo > 0.12 && ciclo < 0.3) {
       var k = (ciclo - 0.12) / 0.18;
       ctx.fillStyle = "rgba(236,244,252," + (1 - k) + ")";
       for (var i = 0; i < 7; i++) {
         var ang = -Math.PI / 2 + (i - 3) * 0.22;
-        var d = 10 + k * 34;
-        ctx.fillRect(Math.round(b.x - 8 + Math.cos(ang) * d * 0.6), Math.round(y0 - 4 + Math.sin(ang) * d), 3, 3);
+        var d = (10 + k * 34) * kb;
+        ctx.fillRect(Math.round(b.x - 8 * kb + Math.cos(ang) * d * 0.6), Math.round(y0 - 4 + Math.sin(ang) * d), 3 * kb, 3 * kb);
       }
     }
   }
@@ -497,7 +515,8 @@
     });
     // tudo o que fica em pé, em ordem de profundidade (só o que aparece na tela)
     var fila = [];
-    if (!longe) OBJETOS.forEach(function (o) { if (ve(o.x, o.y)) fila.push({ p: o.prof, o: o }); });
+    // 6/11: árvores e pedras são desenhadas ao vivo em todos os zooms (o vento não some ao afastar; nada fica duplicado no chão)
+    OBJETOS.forEach(function (o) { if (ve(o.x, o.y)) fila.push({ p: o.prof, o: o }); });
     vivos.forEach(function (v) { fila.push({ p: v.u + v.v, v: v }); });
     bichos.forEach(function (o) { if (o.u != null) fila.push({ p: o.u + o.v, b: o }); });
     fila.sort(function (a, b) { return a.p - b.p; });
@@ -505,7 +524,8 @@
       if (item.o) {
         var o = item.o, im = objImgs[o.img];
         if (!im.complete || !im.naturalWidth) return;
-        if (window.V3[o.img]) arvore(im, o, t); else ctx.drawImage(im, o.x - o.ax, o.y - o.ay);
+        if (window.V3[o.img]) arvore(im, o, t);
+        else { var f = o.F || 1; ctx.drawImage(im, Math.round(o.x - o.ax * f), Math.round(o.y - o.ay * f), im.naturalWidth * f, im.naturalHeight * f); }
         return;
       }
       if (item.v) {
@@ -517,8 +537,9 @@
       }
       var b = item.b, inf = b.info, q = quadroBicho(b, t), pb = iso(b.u, b.v, b.z);
       ctx.fillStyle = "rgba(40,60,96,0.2)";
-      ctx.beginPath(); ctx.ellipse(pb[0], pb[1], inf.w * 0.32, 3, 0, 0, Math.PI * 2); ctx.fill();
-      desenharTira(b.img, q, inf.w, inf.h, Math.round(pb[0] - inf.pe[0]), Math.round(pb[1] - inf.pe[1]), b.esq);
+      var kb = ESC_BICHO[b.tipo] || 1;
+      ctx.beginPath(); ctx.ellipse(pb[0], pb[1], inf.w * 0.32 * kb, 3 * kb, 0, 0, Math.PI * 2); ctx.fill();
+      desenharTira(b.img, q, inf.w, inf.h, Math.round(pb[0] - inf.pe[0] * kb), Math.round(pb[1] - inf.pe[1] * kb), b.esq, kb);
     });
     // aves voando por cima de tudo
     bichos.forEach(function (o) {
@@ -540,7 +561,7 @@
     }
     var E = 2;
     vivos.forEach(function (v) {
-      if (v !== hover && cam.s < 1.1) return;
+      if (v !== hover && cam.s < 0.9) return;
       var p = iso(v.u, v.v, v.z), n = v.nome, est = v.m.fundador ? 7 * E : 0;
       var sx = vw / 2 + (p[0] - cam.x) * cam.s, sy = vh / 2 + (p[1] - C.pe[1] * KM - cam.y) * cam.s;
       var w = n.width * E, h = n.height * E;
@@ -679,6 +700,15 @@
   mapa.appendChild(cv); mapa.appendChild(ctr); mapa.appendChild(balao);
   medir();
   var i0 = inicio(); cam.x = i0.x; cam.y = i0.y; cam.s = i0.s; limites();
+  // link com a vista pronta: #vista=zoom,dx,dy (dx e dy em pixels do mundo a partir da vila)
+  (function () {
+    if (/foto/.test(location.hash)) {   // só para as fotos de antes e depois: o mapa ocupa a tela toda
+      mapa.style.cssText = "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:99;margin:0;border:0";
+      medir(); var j = inicio(); cam.x = j.x; cam.y = j.y; cam.s = j.s; limites();
+    }
+    var m = /vista=([\d.]+)(?:,(-?[\d.]+),(-?[\d.]+))?/.exec(location.hash);
+    if (m) { cam.s = +m[1]; cam.x += +(m[2] || 0); cam.y += +(m[3] || 0); limites(); }
+  })();
   window.addEventListener("resize", function () { medir(); });
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(function (es) {

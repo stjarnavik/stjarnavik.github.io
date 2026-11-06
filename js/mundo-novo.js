@@ -49,6 +49,10 @@
   }
   var R11 = criarRuido(11), R2 = criarRuido(2), R9 = criarRuido(9), R3 = criarRuido(3), R5 = criarRuido(5);
 
+  // 6/11: proporções. Número = tamanho do pixel lógico no mundo (o padrão é 3, o mesmo do morador).
+  // Pinheiros de 2 a 4 vezes a altura de uma pessoa; pedra rúnica 1,7x; o boi e a baleia eram pequenos demais.
+  window.ESCALA = { "pinheiro-1": 4, "pinheiro-2": 4, "pinheiro-3": 5, "pinheiro-4": 5, "pedra": 5 / 3 };
+  window.ESCALA_BICHO = { boi: 4 / 3, baleia: 2 };
   // desenha um objeto do mapa: os v3 vêm em pixel lógico e são mostrados 3x, presos pelo pé
   window.desenharObjeto = function (c, im, o, dx) {
     var pe = (window.V3 || {})[o.img];
@@ -297,7 +301,17 @@
     }
     var OBJ = M.objetos.filter(function (o) { return o.img !== "erva"; }).map(function (o) {
       var c = {}; for (var k in o) c[k] = o[k];
-      c.y = assentar(o.x, o.y); return c;
+      c.y = assentar(o.x, o.y);
+      // 6/11: tamanho de cada árvore. Na borda da clareira da vila a mata é nova e baixa (não esconde os moradores);
+      // as grandes ficam no fundo da floresta.
+      var F = window.ESCALA[o.img];
+      if (window.V3 && window.V3[o.img]) {
+        var d = (o.x - OX) / TW, sy = (o.y - OY) / TH;
+        var dist = Math.hypot((sy + d) / 2 - M.pedra[0], (sy - d) / 2 - M.pedra[1]);
+        F = dist < 13 ? 3 : dist < 17 ? Math.min(F, 4) : F;
+      }
+      c.F = F || 1;
+      return c;
     });
 
     // ---------- formas que não são ladrilho (geradas uma vez, em coordenadas do mundo) ----------
@@ -386,7 +400,7 @@
     })();
     // sombras dos objetos em pé
     OBJ.forEach(function (o) {
-      var r = (o.w || 40) * 0.42;
+      var r = (o.w || 40) * 0.42 * (window.V3 && window.V3[o.img] ? o.F / 3 : o.F);
       elipse(depoisDaTerra, o.x + r * 0.25, o.y - 1, r, r * 0.32, C.NEVE_SOMBRA);
     });
     // índice das formas por pedaço, para não testar tudo em cada pedaço
@@ -586,10 +600,7 @@
     function desenharObjetosLonge() {
       // árvores e lugares por cima da visão de longe, quando as imagens chegarem
       lc.setTransform(1 / K1, 0, 0, 1 / K1, 0, 0);
-      M.objetos.slice().sort(function (a, b) { return a.prof - b.prof; }).forEach(function (o) {
-        var im = objImgs[o.img];
-        if (im && im.complete && im.naturalWidth) window.desenharObjeto(lc, im, o);
-      });
+      // 6/11: as árvores e pedras não entram mais aqui: são desenhadas ao vivo (com vento) em todos os zooms
       M.lugares.forEach(function (l) {
         var im = objImgs[l.img];
         if (im && im.complete && im.naturalWidth) lc.drawImage(im, l.x - l.ax, l.y - l.ay);
@@ -640,7 +651,7 @@
     // ---------- 6/11: pedaços prontos ficam guardados no aparelho (IndexedDB): no reload o chão aparece na hora ----------
     var guardado = { db: null, chaves: {}, pedindo: {}, esperarAte: performance.now() + 500 };
     (function () {
-      var txt = JSON.stringify([M.faixas, M.objetos, M.troncos, M.trilha, M.lugares, "chao-1"]), h = 0;
+      var txt = JSON.stringify([M.faixas, M.objetos, M.troncos, M.trilha, M.lugares, "chao-2"]), h = 0;
       for (var q = 0; q < txt.length; q++) h = (h * 31 + txt.charCodeAt(q)) | 0;
       guardado.ver = "c" + (h >>> 0).toString(36) + "-";   // se o mapa mudar, a versão muda e o velho é apagado
       if (!window.indexedDB || !window.createImageBitmap) { guardado.esperarAte = 0; return; }
